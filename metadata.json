@@ -1,0 +1,5 @@
+{
+  "name": "AI Stock Cheat Sheet",
+  "description": "A personalized stock dashboard that uses Gemini to fetch and evaluate stock data based on technical analysis criteria.",
+  "requestFramePermissions": []
+}
