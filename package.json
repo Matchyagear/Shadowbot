@@ -1,5 +1,5 @@
 {
-  "name": "ai-stock-cheat-sheet",
+  "name": "ai-swing-stock-screener-&-bot",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,9 +9,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "react": "^19.1.0",
     "@google/genai": "^1.11.0",
     "react-dom": "^19.1.0",
-    "react": "^19.1.0"
+    "discord.js": "^14.21.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

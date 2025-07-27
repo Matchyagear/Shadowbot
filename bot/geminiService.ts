@@ -1,10 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Stock } from '../types';
 
-if (!process.env.API_KEY) {
-    throw new Error("API_KEY environment variable not set");
-}
-
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const stockSchemaProperties = {
@@ -27,72 +23,12 @@ const stockSchemaProperties = {
 
 const requiredFields = ["ticker", "companyName", "currentPrice", "priceChange", "priceChangePercent", "averageVolume", "rsi", "macdStatus", "matchScore", "rationale", "sparklineData"];
 
-const listResponseSchema = {
-    type: Type.ARRAY,
-    items: {
-      type: Type.OBJECT,
-      properties: stockSchemaProperties,
-      required: requiredFields,
-    },
-};
-
 const singleResponseSchema = {
     type: Type.OBJECT,
     properties: stockSchemaProperties,
     required: requiredFields,
 };
 
-
-export const fetchStockIdeas = async (): Promise<Stock[]> => {
-    try {
-        const prompt = `
-            Analyze the current market data for stocks listed on the NYSE and identify 5 to 10 stocks that best fit the following rigorous swing trading strategy.
-            Rank them from best to worst based on the overall strength of their setup. The best match should be the first item in the JSON array.
-
-            **Prioritization: First, look for strong candidates with a share price under $100. If you cannot find at least 5 strong candidates, you may then include stocks with a price above $100 to complete the list.**
-
-            **Swing Trading Strategy Criteria:**
-            1.  **Trend Confirmation (Strongly Required):** 50-day MA > 200-day MA (Golden Cross) AND current price > both MAs.
-            2.  **Momentum (Required):** RSI(14) > 50 AND MACD line > MACD Signal line.
-            3.  **Volume (Strongly Required):** Average daily volume > 1 million shares AND Relative Volume (RelVol) > 1.5.
-            4.  **Price Action (Required):** Price near its 52-week high or breaking out of a consolidation base. Avoid choppy price action.
-
-            For each stock returned, you MUST provide all of the following data points.
-            - **currentPrice**: The current or last closing stock price.
-            - **priceChange**: The dollar change for the day.
-            - **priceChangePercent**: The percentage change for the day.
-            - **averageVolume**: The 30-day average volume as a formatted string (e.g., '2.1M').
-            - **rsi**: The current 14-day RSI value.
-            - **macdStatus**: 'Bullish' or 'Bearish'.
-            - **sparklineData**: An array of exactly 24 numbers representing the price points for a 1-day chart.
-
-            Return a JSON array of 5-10 stocks that meet these criteria.
-        `;
-
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: prompt,
-            config: {
-                responseMimeType: "application/json",
-                responseSchema: listResponseSchema,
-                temperature: 0.2,
-            },
-        });
-        
-        const jsonText = response.text.trim();
-        const parsedData = JSON.parse(jsonText);
-
-        if (!Array.isArray(parsedData)) {
-            throw new Error("AI response was not in the expected array format.");
-        }
-        
-        return parsedData as Stock[];
-
-    } catch (error) {
-        console.error("Error fetching stock ideas from Gemini API:", error);
-        throw new Error("Failed to get a valid response from the AI. It might be due to API restrictions or an internal error. Please check your API key and try again.");
-    }
-};
 
 export const evaluateTicker = async (ticker: string): Promise<Stock> => {
     try {

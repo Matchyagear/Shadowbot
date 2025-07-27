@@ -1,133 +1,120 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { StockTable } from './components/StockTable';
-import { fetchStockDataFromAI } from './services/geminiService';
-import { evaluateStock } from './utils/evaluator';
-import { YOUR_INITIAL_PICKS } from './constants';
-import { DataStatus } from './types';
-import type { StockRowData } from './types';
-import { WatchlistImporter } from './components/WatchlistImporter';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Stock } from './types';
+import { fetchStockIdeas } from './services/geminiService';
+import Header from './components/Header';
+import CriteriaPanel from './components/CriteriaPanel';
+import StockCard from './components/StockCard';
+import LoadingState from './components/LoadingState';
+import ErrorMessage from './components/ErrorMessage';
+import TickerEvaluator from './components/TickerEvaluator';
 
-const App = () => {
-  const [myPicks, setMyPicks] = useState<StockRowData[]>([]);
-  const [myPicksStatus, setMyPicksStatus] = useState<DataStatus>(DataStatus.Idle);
-  const [newTicker, setNewTicker] = useState('');
+const App: React.FC = () => {
+  const [stocks, setStocks] = useState<Stock[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ——— WATCHLIST STATE ———
-  const [watchlist, setWatchlist] = useState<string[]>(() => {
+  const runScan = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
     try {
-      const saved = localStorage.getItem('myWatchlist');
-      return saved ? JSON.parse(saved) : YOUR_INITIAL_PICKS;
-    } catch {
-      return YOUR_INITIAL_PICKS;
+      const stockIdeas = await fetchStockIdeas();
+      setStocks(stockIdeas);
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unknown error occurred.');
+      }
+      setStocks([]);
+    } finally {
+      setIsLoading(false);
     }
-  });
-
-  // persist whenever watchlist changes
-  useEffect(() => {
-    localStorage.setItem('myWatchlist', JSON.stringify(watchlist));
-  }, [watchlist]);
-
-  const processTickers = useCallback(async (tickers: string[], currentPicks: StockRowData[]): Promise<StockRowData[]> => {
-    const newPicks = [...currentPicks];
-    const newTickersToFetch = tickers.filter(t => !currentPicks.some(p => p.ticker === t.toUpperCase()));
-    
-    for (const ticker of newTickersToFetch) {
-        const upperCaseTicker = ticker.toUpperCase();
-        setError(null);
-        const rawData = await fetchStockDataFromAI(upperCaseTicker);
-        if (rawData) {
-            const evaluation = evaluateStock({ ...rawData, ticker: upperCaseTicker });
-            newPicks.push({
-                ...rawData,
-                ticker: upperCaseTicker,
-                ...evaluation,
-                rank: null, // Rank will be calculated later
-            });
-        } else {
-            setError(`Failed to fetch data for ${upperCaseTicker}. Please try another ticker.`);
-        }
-    }
-    
-    // Sort and rank all picks
-    const sortedPicks = newPicks.sort((a, b) => b.score - a.score);
-    return sortedPicks.map((pick, index) => ({ ...pick, rank: index + 1 }));
   }, []);
 
   useEffect(() => {
-    const fetchInitialData = async () => {
-      setMyPicksStatus(DataStatus.Loading);
-      const processedPicks = await processTickers(YOUR_INITIAL_PICKS, []);
-      setMyPicks(processedPicks);
-      setMyPicksStatus(DataStatus.Success);
-    };
-    
-    fetchInitialData();
+    runScan();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [watchlist]); // Only run once on mount
-
-  const handleAddTicker = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTicker || myPicks.some(p => p.ticker === newTicker.toUpperCase())) {
-      setNewTicker('');
-      return;
-    }
-    setMyPicksStatus(DataStatus.Loading);
-    const updatedPicks = await processTickers([newTicker], myPicks);
-    setMyPicks(updatedPicks);
-    setMyPicksStatus(DataStatus.Success);
-    setNewTicker('');
-  };
+  }, []);
   
-  const shadowsPicks = useMemo(() => {
-    return myPicks
-      .filter(p => p.score >= 3) // Shadow only considers strong picks
-      .slice(0, 5); // Take top 5 of the strong picks
-  }, [myPicks]);
+  const handleSaveSnapshot = async () => {
+    if (stocks.length === 0 || isSaving) return;
+    setIsSaving(true);
+    try {
+      const result = await window.electronAPI.saveSnapshot(stocks);
+      if (result.success) {
+        alert(`Snapshot saved successfully to: ${result.path}`);
+      } else {
+        alert(`Error saving snapshot: ${result.error}`);
+      }
+    } catch(err) {
+      console.error("Snapshot save error:", err);
+      alert("Failed to save snapshot. Ensure you have permissions to write to the Google Drive folder.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+
+  const renderContent = () => {
+    if (isLoading) {
+      return <LoadingState />;
+    }
+    if (error) {
+      return <ErrorMessage message={error} onRetry={runScan} />;
+    }
+    if (stocks.length === 0) {
+      return (
+        <div className="text-center py-12 px-4">
+          <div className="mx-auto w-24 h-24 text-gray-400">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM13.5 13.5h-6" />
+            </svg>
+          </div>
+          <h3 className="mt-2 text-lg font-semibold text-white">No Matching Stocks Found</h3>
+          <p className="mt-1 text-sm text-gray-400">
+            The AI couldn't find any stocks on the NYSE that currently match your strategy. Market conditions may be unfavorable.
+          </p>
+          <div className="mt-6">
+            <button
+              type="button"
+              onClick={runScan}
+              className="inline-flex items-center rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+            >
+              <svg className="-ml-0.5 mr-1.5 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201-4.42 5.5 5.5 0 011.66-1.991A5.5 5.5 0 0112.5 3a5.5 5.5 0 012.812 8.424zM16.5 15.5a.75.75 0 10-1.5 0 .75.75 0 001.5 0zM12.5 5a.75.75 0 000 1.5.75.75 0 000-1.5z" clipRule="evenodd" />
+                <path d="M4.12 7.336A5.485 5.485 0 013 9.25a5.5 5.5 0 01-2.072.502.75.75 0 00-.638 1.25 7.001 7.001 0 006.015 4.177.75.75 0 00.779-.623A5.502 5.502 0 015.5 6.25a5.486 5.486 0 01-1.38-.214z" />
+              </svg>
+              Scan Again
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+        {stocks.map((stock, index) => (
+          <StockCard key={stock.ticker} stock={stock} rank={index + 1} />
+        ))}
+      </div>
+    );
+  };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100 p-4 sm:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto">
-        <header className="mb-8 text-center">
-          <h1 className="text-4xl sm:text-5xl font-bold text-white">
-            AI Stock Cheat Sheet
-          </h1>
-          <p className="text-lg text-gray-400 mt-2">
-            Your personalized stock dashboard powered by Gemini
-          </p>
-        </header>
-
-        {/* 1-Click CSV importer for your TradingView watchlist */}
-        <WatchlistImporter onLoad={setWatchlist} />
-
-        <div className="bg-gray-800 p-4 rounded-lg shadow-lg mb-6">
-          <form onSubmit={handleAddTicker} className="flex flex-col sm:flex-row gap-4">
-            <input
-              type="text"
-              value={newTicker}
-              onChange={(e) => setNewTicker(e.target.value)}
-              placeholder="Add a stock ticker (e.g., AAPL)"
-              className="flex-grow bg-gray-700 text-white placeholder-gray-400 border border-gray-600 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500"
-            />
-            <button
-              type="submit"
-              disabled={myPicksStatus === DataStatus.Loading}
-              className="bg-sky-600 hover:bg-sky-500 text-white font-bold py-2 px-6 rounded-md transition-colors duration-300 disabled:bg-gray-500 disabled:cursor-not-allowed"
-            >
-              {myPicksStatus === DataStatus.Loading ? 'Analyzing...' : 'Add Ticker'}
-            </button>
-          </form>
-          {error && <p className="text-red-400 mt-2 text-sm">{error}</p>}
+    <div className="min-h-screen bg-gray-900 text-gray-200 font-sans">
+      <Header onScan={runScan} onSaveSnapshot={handleSaveSnapshot} isScanning={isLoading} isSaving={isSaving} hasStocks={stocks.length > 0} />
+      <main className="container mx-auto px-4 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
+          <div className="lg:col-span-1 space-y-8 sticky top-24">
+            <TickerEvaluator />
+            <CriteriaPanel />
+          </div>
+          <div className="lg:col-span-3">
+            <h2 className="text-2xl font-bold text-white mb-4">Top AI-Screened Stocks</h2>
+            {renderContent()}
+          </div>
         </div>
-
-        <StockTable title="Your Picks" stocks={myPicks} status={myPicksStatus} />
-        <StockTable title="Shadow's Picks (Top Performers)" stocks={shadowsPicks} status={myPicksStatus} />
-        
-        <footer className="text-center text-gray-500 mt-12 text-sm">
-            <p>Data generated by Google Gemini. Not financial advice. For educational purposes only.</p>
-            <p>© {new Date().getFullYear()} AI Stock Cheat Sheet</p>
-        </footer>
-      </div>
+      </main>
     </div>
   );
 };

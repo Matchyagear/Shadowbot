@@ -1,5 +1,5 @@
 {
-  "name": "AI Stock Cheat Sheet",
-  "description": "A personalized stock dashboard that uses Gemini to fetch and evaluate stock data based on technical analysis criteria.",
+  "name": "AI Swing Stock Screener & Bot",
+  "description": "A desktop application to screen for stocks using an AI-powered strategy, with features to save snapshots to Google Drive and a companion Discord bot for on-demand analysis.",
   "requestFramePermissions": []
 }
