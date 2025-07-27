@@ -1,22 +1,40 @@
 {
-  "name": "ai-swing-stock-screener-&-bot",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "name": "shadowbeta",
+  "productName": "AI Swing Stock Screener",
+  "version": "1.0.0",
+  "description": "An AI-powered stock screener desktop app and Discord bot.",
+  "main": "main.js",
   "scripts": {
-    "dev": "vite",
+    "start": "npm run build && electron .",
+    "dev": "concurrently -k -s first \"npm:vite\" \"npm:electron-dev\"",
+    "electron-dev": "wait-on tcp:5173 && electron .",
+    "vite": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "bot": "ts-node --require dotenv/config bot/bot.ts",
+    "start-bot": "ts-node --require dotenv/config bot/discordBot.ts"
   },
   "dependencies": {
-    "react": "^19.1.0",
     "@google/genai": "^1.11.0",
-    "react-dom": "^19.1.0",
-    "discord.js": "^14.21.0"
+    "@google/generative-ai": "^0.24.1",
+    "discord.js": "^14.21.0",
+    "dotenv": "^16.4.5",
+    "electron-squirrel-startup": "^1.0.1",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
   },
   "devDependencies": {
-    "@types/node": "^22.14.0",
-    "typescript": "~5.7.2",
-    "vite": "^6.2.0"
+    "@types/node": "^20.14.9",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.19",
+    "concurrently": "^8.2.2",
+    "electron": "^31.2.1",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.6",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.3",
+    "vite": "^5.3.3",
+    "wait-on": "^7.2.0"
   }
 }

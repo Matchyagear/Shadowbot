@@ -1,6 +1,6 @@
 # AI Swing Stock Screener & Bot
 
-This project has been transformed into a powerful suite of tools for stock analysis, consisting of:
+This project is a powerful suite of tools for stock analysis, consisting of:
 1.  A **Desktop Application** built with Electron and React for scanning the market based on your strategy.
 2.  A **Discord Bot** for on-demand stock evaluations directly within your Discord server.
 
@@ -13,17 +13,15 @@ Before you begin, ensure you have the following installed:
 
 ## 1. Project Setup
 
-First, clone the repository and install the necessary dependencies.
+First, clone the repository. Then, from the project's root directory, install all the necessary dependencies. **This is a required first step.**
 
 ```bash
-# Clone this repository
-git clone <your-repo-url>
+# Navigate to the project directory
 cd <your-repo-directory>
 
 # Install dependencies for both the app and the bot
 npm install
 ```
-This will install `electron`, `discord.js`, and other required packages.
 
 ## 2. Environment Variables
 
@@ -51,15 +49,13 @@ DISCORD_BOT_TOKEN="YOUR_DISCORD_BOT_TOKEN"
 10. Copy the generated URL at the bottom, paste it into your browser, and invite the bot to your server.
 
 
-## 3. Running the Desktop Application
+## 3. Running the Desktop Application (Development)
 
-The desktop app allows you to run scans and save snapshots.
-
-### To Start the App:
+To run the desktop app in development mode with live reloading:
 ```bash
-npm start
+npm run dev
 ```
-This command launches the Electron application. The first scan will run automatically.
+This command starts the Vite development server and launches the Electron application. The window will open automatically.
 
 ### Features:
 - **Scan Now**: Re-runs the AI market scan.
@@ -72,6 +68,7 @@ This command launches the Electron application. The first scan will run automati
 The Discord bot runs as a separate process. It will listen for commands in any channel it has access to.
 
 ### To Start the Bot:
+Open a **new terminal** and run:
 ```bash
 npm run bot
 ```
@@ -82,8 +79,5 @@ In any channel on the Discord server where you invited the bot, type:
 ```
 !eval <TICKER>
 ```
-For example:
-```
-!eval TSLA
-```
-The bot will reply with an embedded "Stock Card" containing the AI's analysis based on your strategy.
+For example: `!eval TSLA`
+The bot will reply with an embedded "Stock Card" containing the AI's analysis.

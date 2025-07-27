@@ -1,11 +1,13 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Stock } from '../types';
 
-if (!process.env.API_KEY) {
-    throw new Error("API_KEY environment variable not set");
+const apiKey = import.meta.env?.VITE_API_KEY || '';
+
+if (!apiKey) {
+    throw new Error("VITE_API_KEY environment variable not set");
 }
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const ai = new GoogleGenAI({ apiKey });
 
 const stockSchemaProperties = {
     ticker: { type: Type.STRING, description: "The stock ticker symbol, e.g., AAPL." },
@@ -25,14 +27,17 @@ const stockSchemaProperties = {
     }
 };
 
-const requiredFields = ["ticker", "companyName", "currentPrice", "priceChange", "priceChangePercent", "averageVolume", "rsi", "macdStatus", "matchScore", "rationale", "sparklineData"];
+const requiredFields = [
+    "ticker", "companyName", "currentPrice", "priceChange", "priceChangePercent",
+    "averageVolume", "rsi", "macdStatus", "matchScore", "rationale", "sparklineData"
+];
 
 const listResponseSchema = {
     type: Type.ARRAY,
     items: {
-      type: Type.OBJECT,
-      properties: stockSchemaProperties,
-      required: requiredFields,
+        type: Type.OBJECT,
+        properties: stockSchemaProperties,
+        required: requiredFields,
     },
 };
 
@@ -41,7 +46,6 @@ const singleResponseSchema = {
     properties: stockSchemaProperties,
     required: requiredFields,
 };
-
 
 export const fetchStockIdeas = async (): Promise<Stock[]> => {
     try {
@@ -78,14 +82,14 @@ export const fetchStockIdeas = async (): Promise<Stock[]> => {
                 temperature: 0.2,
             },
         });
-        
-        const jsonText = response.text.trim();
+
+        const jsonText = response.text?.trim() || '';
         const parsedData = JSON.parse(jsonText);
 
         if (!Array.isArray(parsedData)) {
             throw new Error("AI response was not in the expected array format.");
         }
-        
+
         return parsedData as Stock[];
 
     } catch (error) {
@@ -132,14 +136,14 @@ export const evaluateTicker = async (ticker: string): Promise<Stock> => {
                 temperature: 0.2,
             },
         });
-        
-        const jsonText = response.text.trim();
+
+        const jsonText = response.text?.trim() || '';
         const parsedData = JSON.parse(jsonText);
 
         if (!parsedData.ticker) {
             throw new Error("AI response was missing required fields.");
         }
-        
+
         return parsedData as Stock;
 
     } catch (error) {

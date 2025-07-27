@@ -21,8 +21,14 @@ const createWindow = () => {
     icon: path.join(__dirname, 'assets/icon.png'),
   });
 
-  // Load the index.html of the app.
-  mainWindow.loadFile('index.html');
+  // Load from Vite dev server in development, or from file in production
+  // app.isPackaged is true when the app is packaged, false otherwise
+  if (!app.isPackaged) {
+    mainWindow.loadURL('http://localhost:5173');
+    mainWindow.webContents.openDevTools();
+  } else {
+    mainWindow.loadFile(path.join(__dirname, 'dist', 'renderer', 'index.html'));
+  }
 };
 
 // This method will be called when Electron has finished
